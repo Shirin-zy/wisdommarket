@@ -1,0 +1,300 @@
+<template>
+  <!-- 购物车页面 -->
+  <div class="cart">
+    <van-nav-bar title="购物车" fixed />
+    <!-- 购物车主体 -->
+    <!-- 购物车开头 -->
+    <div class="body" v-if="cartList.length > 0">
+      <div class="cart-title">
+        <span class="all"
+          >共<i>{{ cartTotal }}</i
+          >件商品</span
+        >
+        <span class="edit" @click="edit = !edit">
+          <van-icon name="edit" />
+          {{ edit ? "退出管理" : " 编辑" }}
+        </span>
+      </div>
+      <!-- 购物车列表 -->
+      <div class="cart-list">
+        <div class="cart-item" v-for="item in cartList" :key="item.id">
+          <van-checkbox
+            @click="changeCheck(item.goods_id)"
+            :value="item.isCheck"
+          ></van-checkbox>
+          <div class="show">
+            <img
+              :src="item.goods.goods_image"
+              alt=""
+              @click="$router.push(`/detial/${item.goods_id}`)"
+            />
+          </div>
+          <div class="info">
+            <span class="tit text-ellipsis-2">{{ item.goods.goods_name }}</span>
+            <span class="bottom">
+              <div class="price">
+                ¥ <span>{{ item.goods.goods_price_min }}</span>
+              </div>
+              <div class="count-box">
+                <!-- 既要保留原本的形参又要通过函数传参可以使用箭头函数 -->
+                <CountBox
+                  @input="
+                    (value) =>
+                      changeCartCount(value, item.goods_id, item.goods_sku_id)
+                  "
+                  :value="item.goods_num"
+                ></CountBox>
+              </div>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="footer-fixed">
+        <div class="all-check">
+          <van-checkbox
+            @click="changeAllCheck"
+            :value="isAllCheck"
+            icon-size="18"
+          ></van-checkbox>
+          全选
+        </div>
+
+        <div class="all-total">
+          <div v-show="!edit" class="price">
+            <span>合计：</span>
+            <span
+              >¥ <i class="totalPrice">{{ selectPrice }}</i>
+            </span>
+          </div>
+          <div
+            v-if="edit"
+            class="delete"
+            @click="handleClear"
+            :class="{ disabled: selectCount === 0 }"
+          >
+            删除({{ selectCount }})
+          </div>
+          <div
+            v-else
+            class="goPay"
+            @click="selectCount > 0 ? goPay() : ''"
+            :class="{ disabled: selectCount === 0 }"
+          >
+            结算({{ selectCount }})
+          </div>
+        </div>
+      </div>
+    </div>
+    <van-empty v-else description="还没有挑选商品">
+      <van-button
+        round
+        type="danger"
+        class="bottom-button"
+        @click="$router.push('/home')"
+        >去逛逛</van-button
+      >
+    </van-empty>
+  </div>
+</template>
+<script>
+import CountBox from '@/components/CountBox.vue'
+import { mapState, mapGetters } from 'vuex'
+export default {
+  name: 'CartPage',
+  data () {
+    return {
+      edit: false // 是个为编辑购物车状态
+    }
+  },
+  components: {
+    CountBox
+  },
+  methods: {
+    // 改变选中状态并提交vuex进行修改
+    changeCheck (goodsId) {
+      this.$store.commit('cart/changeCheckBox', goodsId)
+    },
+    // 改变全选框状态
+    changeAllCheck () {
+      this.$store.commit('cart/changeAllCheck', !this.isAllCheck)
+    },
+    // 改变购物车数量并提交vuex进行修改
+    changeCartCount (goodsNum, goodsId, goodsSkuId) {
+      console.log(goodsNum, goodsId, goodsSkuId)
+      this.$store.commit('cart/updateCart', { goodsNum, goodsId, goodsSkuId })
+    },
+    // 移除购物车内的商品
+    handleClear () {
+      if (this.selectList <= 0) {
+        return
+      }
+      this.$store.dispatch('cart/clearCart')
+    },
+    // 结算
+    goPay () {
+      this.$router.push({
+        path: '/pay',
+        query: {
+          mode: 'cart',
+          cartIds: this.selectList.map(item => item.id).join(',')
+        }
+      })
+    }
+  },
+  computed: {
+    ...mapState('cart', ['cartList', 'checkAll']),
+    ...mapGetters('cart', [
+      'cartTotal',
+      'selectList',
+      'selectCount',
+      'selectPrice',
+      'isAllCheck'
+    ])
+  },
+  beforeCreate () {
+    // 调用vuex中cart模块内的方法
+    this.$store.dispatch('cart/getCartList')
+  }
+}
+</script>
+
+<style lang="less" scoped>
+// 主题 padding
+.cart {
+  padding-top: 46px;
+  padding-bottom: 100px;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+  .cart-title {
+    height: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 14px;
+    .all {
+      i {
+        font-style: normal;
+        margin: 0 2px;
+        color: #fa2209;
+        font-size: 16px;
+      }
+    }
+    .edit {
+      .van-icon {
+        font-size: 18px;
+      }
+    }
+  }
+
+  .cart-item {
+    margin: 0 10px 10px 10px;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    background-color: #ffffff;
+    border-radius: 5px;
+
+    .show img {
+      width: 100px;
+      height: 100px;
+    }
+    .info {
+      width: 210px;
+      padding: 10px 5px;
+      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+
+      .bottom {
+        display: flex;
+        justify-content: space-between;
+        .price {
+          display: flex;
+          align-items: flex-end;
+          color: #fa2209;
+          font-size: 12px;
+          span {
+            font-size: 16px;
+          }
+        }
+        .count-box {
+          display: flex;
+          width: 110px;
+          .add,
+          .minus {
+            width: 30px;
+            height: 30px;
+            outline: none;
+            border: none;
+          }
+          .inp {
+            width: 40px;
+            height: 30px;
+            outline: none;
+            border: none;
+            background-color: #efefef;
+            text-align: center;
+            margin: 0 5px;
+          }
+        }
+      }
+    }
+  }
+}
+
+.footer-fixed {
+  position: fixed;
+  left: 0;
+  bottom: 50px;
+  height: 50px;
+  width: 100%;
+  border-bottom: 1px solid #ccc;
+  background-color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 10px;
+
+  .all-check {
+    display: flex;
+    align-items: center;
+    .van-checkbox {
+      margin-right: 5px;
+    }
+  }
+
+  .all-total {
+    display: flex;
+    line-height: 36px;
+    .price {
+      font-size: 14px;
+      margin-right: 10px;
+      .totalPrice {
+        color: #fa2209;
+        font-size: 18px;
+        font-style: normal;
+      }
+    }
+
+    .goPay,
+    .delete {
+      min-width: 100px;
+      height: 36px;
+      line-height: 36px;
+      text-align: center;
+      background-color: #fa2f21;
+      color: #fff;
+      border-radius: 18px;
+      &.disabled {
+        background-color: #ff9779;
+      }
+    }
+  }
+}
+.bottom-button {
+  width: 160px;
+  height: 40px;
+}
+</style>
